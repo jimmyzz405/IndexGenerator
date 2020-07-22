@@ -11,15 +11,10 @@ import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestClientBuilder.RequestConfigCallback;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.sniff.Sniffer;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.List;
 
-@Configuration
+
 public class ElasticSearchConfig {
 
     private static final String ES_NODES_SPLIT = ",";
@@ -27,13 +22,7 @@ public class ElasticSearchConfig {
     private RestHighLevelClient client;
     private Sniffer sniffer;
 
-//    @Value("127.0.0.1:9200")
-    private String dataNodeUrl = "127.0.0.1:9200";
 
-//    @Value("${elasticsearch.connect.scheme}")
-    private String connectScheme;
-
-    @PostConstruct
     public void init(String serverUrl) {
         RestClientBuilder builder = RestClient.builder(loadNode(serverUrl));
         builder.setNodeSelector(NodeSelector.SKIP_DEDICATED_MASTERS)
@@ -53,18 +42,12 @@ public class ElasticSearchConfig {
                         .setSocketTimeout(600000);
             }
         });
-//    lowLevelRestClient = builder.build();
 
-//    NodesSniffer nodesSniffer = new ElasticsearchNodesSniffer(
-//        lowLevelRestClient,
-//        TimeUnit.SECONDS.toMillis(5),
-//        ElasticsearchNodesSniffer.Scheme.HTTP);
-//    sniffer = Sniffer.builder(lowLevelRestClient).setNodesSniffer(nodesSniffer).build();
         client = new RestHighLevelClient(builder);
 
     }
 
-    @PreDestroy
+
     public void destroy() {
         IOUtils.closeQuietly(sniffer);
         IOUtils.closeQuietly(lowLevelRestClient);
@@ -72,7 +55,7 @@ public class ElasticSearchConfig {
 
     }
 
-    @Bean
+
     public RestHighLevelClient getClient() {
         return client;
     }

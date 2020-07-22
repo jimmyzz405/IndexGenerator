@@ -22,8 +22,6 @@ public class IndexGenerator {
         //传入参数，1=data_instance, 2=instance_relation, 3=attribute_relation
         String index = args[0];
         String serverIp=args[1];
-//        String index = "3";
-//        String serverIp="";
 
         ElasticSearchConfig elasticSearchConfig = new ElasticSearchConfig();
         elasticSearchConfig.init(serverIp);
@@ -40,8 +38,7 @@ public class IndexGenerator {
             }
         }
 
-        //brand:kfc type:order/coupon  kfc_order_2019-03-31_speed
-//        String brand = index.split("_")[0];
+
         String type = "";
         if (index.contains("1")) {
             type = "data_instance";
@@ -55,38 +52,59 @@ public class IndexGenerator {
 
         System.out.println("当前要创建的index : " + type);
         String indexName=type;
+
         createIndex(indexName, type,serverIp);
 
         System.out.println("process finished!");
+        elasticSearchConfig.destroy();
         System.exit(1);
     }
 
 
     private static void createIndex(String indexName,  String type, String serverIp) {
 
-//            int shardNum = getIndexShardNum(brand, type);
+
             try {
                 CreateIndexRequest request = new CreateIndexRequest(indexName);
-                request.settings(Settings.builder().put("index.number_of_shards", 1)
+                request.settings(Settings.builder()
+                        //设置数据分片数
+                        .put("index.number_of_shards", 1)
+                        //设置数据副本数量
                         .put("index.number_of_replicas", 0)
+                        //索引刷新频率（刷新时间间隔）
                         .put("index.refresh_interval", "59s")
+                        //是否在每次index，delete，update，bulk请求之后立即同步并提交translog
+                        //request ：（默认）每次request后都进行一次fsync和commit操作
+                        //async ：在后台每sync_interval时间进行一次fsync和commit
                         .put("index.translog.durability", "async")
+                        //translog多久被同步到磁盘并提交一次
                         .put("index.translog.sync_interval", "600s")
+                        //当操作达到多大时执行刷新
                         .put("index.translog.flush_threshold_size", "1024mb")
+                        //merge最大合并数
                         .put("index.merge.scheduler.max_merge_count", 100)
+                        //执行merge所用的线程数
                         .put("index.merge.scheduler.max_thread_count", 1)
+                        //每层所允许的分段数
                         .put("index.merge.policy.segments_per_tier", 50)
-                        .put("index.requests.cache.enable", "true")).mapping("_doc", createMapping(type));
+                        //开启或关闭每个请求的缓存
+                        .put("index.requests.cache.enable", "true"))
+                        .mapping("_doc", createMapping(type));
                 ElasticSearchConfig elasticSearchConfig = new ElasticSearchConfig();
                 elasticSearchConfig.init(serverIp);
                 RestHighLevelClient client = elasticSearchConfig.getClient();
                 CreateIndexResponse response = client.indices()
                         .create(request, RequestOptions.DEFAULT);
                 if (response.isAcknowledged()) {
-                    System.out.println("创建 index: " + indexName + " successfully ");
+                    elasticSearchConfig.destroy();
+                    System.out.println("创建 index: " + indexName + " 成功！ ");
                 }
-            } catch (IOException e) {
-                System.out.println("创建index :" + indexName + "失败！ reason :" + e.getMessage());
+            } catch (Exception e) {
+
+                System.out.println("创建index : " + indexName + "失败！" );
+                System.out.println("reason : " +e.getMessage());
+
+
             }
 
     }
@@ -101,7 +119,7 @@ public class IndexGenerator {
 
 
                         builder.startArray("dynamic_templates");
-                        /*第二个match*/
+                        /*第一个mapping*/
                         builder.startObject();
                         {
                             builder.startObject("time_info");
@@ -293,6 +311,8 @@ public class IndexGenerator {
                 System.out.println("构造mapping 失败! reason" + e.getMessage());
             }
 
+
+
             //type = attribute_relation
         } else if("attribute_relation".equalsIgnoreCase(type)) {
             try {
@@ -342,6 +362,9 @@ public class IndexGenerator {
             }
 
         }
+
+
+
          //type = instance_relation
         else if("instance_relation".equalsIgnoreCase(type)) {
             try {
